@@ -1,0 +1,330 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>给你的信 💌</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+            display: flex; justify-content: center; align-items: center;
+            font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', '楷体', sans-serif;
+            overflow: hidden; position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #starsCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
+        .letter-scene {
+            position: relative; z-index: 1; text-align: center; cursor: pointer;
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        .letter-scene.hidden { opacity: 0; transform: scale(0.8); pointer-events: none; }
+        .envelope {
+            width: 260px; height: 190px;
+            background: linear-gradient(135deg, #f7e6d3 0%, #f0d4b8 100%);
+            border-radius: 14px; margin: 0 auto 28px; position: relative;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease;
+        }
+        .envelope:active { transform: scale(0.96); }
+        .envelope::before {
+            content: ""; position: absolute; top: -38px; left: 0;
+            width: 0; height: 0;
+            border-left: 130px solid transparent; border-right: 130px solid transparent;
+            border-bottom: 48px solid #f0d4b8;
+        }
+        .envelope .seal {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            font-size: 50px; animation: sealPulse 2s infinite;
+        }
+        @keyframes sealPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.1); } }
+        .letter-scene h1 { font-size: 26px; color: #f5e6d3; font-weight: 400; letter-spacing: 3px; text-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+        .letter-scene p { font-size: 14px; color: rgba(245,230,211,0.5); margin-top: 6px; }
+        .open-hint { margin-top: 18px; font-size: 13px; color: rgba(255,200,150,0.5); animation: blink 1.5s infinite; }
+        @keyframes blink { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        .bubble-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+        .bubble {
+            position: absolute; pointer-events: auto;
+            background: rgba(255,255,255,0.08); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 20px;
+            padding: 14px 24px; color: #fff; font-size: 17px; font-weight: 500;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.15);
+            opacity: 0; cursor: default; user-select: none;
+            white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            animation: bubbleAppear 0.5s ease forwards;
+            transition: transform 0.25s ease;
+        }
+        .bubble:active { transform: scale(1.08) !important; }
+        .bubble.warm   { background: rgba(255,150,100,0.13); border-color: rgba(255,150,100,0.2); }
+        .bubble.pink   { background: rgba(255,120,180,0.10); border-color: rgba(255,120,180,0.2); }
+        .bubble.gold   { background: rgba(255,210,80,0.10);  border-color: rgba(255,210,80,0.2);  }
+        .bubble.teal   { background: rgba(80,210,200,0.10);  border-color: rgba(80,210,200,0.2);  }
+        .bubble.purple { background: rgba(180,130,255,0.10); border-color: rgba(180,130,255,0.2); }
+        .bubble.blue   { background: rgba(100,180,255,0.10); border-color: rgba(100,180,255,0.2); }
+        @keyframes bubbleAppear {
+            0% { opacity: 0; transform: scale(0) translateY(30px); }
+            60% { transform: scale(1.08) translateY(-3px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes floatA { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes floatB { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+        @keyframes floatC { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .bubble.float-a { animation: bubbleAppear 0.5s ease forwards, floatA 4s ease-in-out infinite; }
+        .bubble.float-b { animation: bubbleAppear 0.5s ease forwards, floatB 5s ease-in-out infinite; }
+        .bubble.float-c { animation: bubbleAppear 0.5s ease forwards, floatC 3.5s ease-in-out infinite; }
+        .bubble.pop { animation: popBubble 0.35s ease forwards !important; }
+        @keyframes popBubble {
+            0% { transform: scale(1); opacity: 1; }
+            40% { transform: scale(1.25); opacity: 0.7; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .controls {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10;
+            display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+            opacity: 0; transition: opacity 0.6s ease; pointer-events: none;
+        }
+        .controls.show { opacity: 1; pointer-events: auto; }
+        .controls button {
+            background: rgba(255,255,255,0.06); backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.6);
+            padding: 6px 16px; border-radius: 20px; font-size: 13px; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .controls button:active { transform: scale(0.94); }
+
+        .petal {
+            position: fixed; top: -20px; z-index: 1; pointer-events: none;
+            animation: petalFall linear infinite;
+        }
+        @keyframes petalFall {
+            0% { transform: translateY(-20px) rotate(0deg) translateX(0); opacity: 0.35; }
+            100% { transform: translateY(110vh) rotate(720deg) translateX(60px); opacity: 0; }
+        }
+        @media (max-width: 480px) {
+            .envelope { width: 200px; height: 150px; }
+            .envelope::before { border-left-width: 100px; border-right-width: 100px; border-bottom-width: 38px; top: -30px; }
+            .envelope .seal { font-size: 38px; }
+            .letter-scene h1 { font-size: 20px; }
+            .bubble { font-size: 14px; padding: 10px 16px; border-radius: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starsCanvas"></canvas>
+
+    <div class="letter-scene" id="letterScene" onclick="openLetter()">
+        <div class="envelope"><div class="seal">💌</div></div>
+        <h1>✉️ 有一封信给你</h1>
+        <p>轻轻点一下，打开它</p>
+        <div class="open-hint">💛 点击这里</div>
+    </div>
+
+    <div class="bubble-container" id="bubbleContainer"></div>
+
+    <div class="controls" id="controls">
+        <button onclick="addMoreBubbles(6)">🌸 再来一些</button>
+        <button onclick="clearBubbles()">✨ 清屏</button>
+    </div>
+
+    <script>
+        // 1. 星空背景
+        var canvas = document.getElementById('starsCanvas');
+        var ctx = canvas.getContext('2d');
+        var stars = [];
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+        function initStars(n) { n = n || 100; stars = []; for(var i=0;i<n;i++) stars.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*1.6+0.2, a:Math.random()*0.7+0.2, s:Math.random()*0.02+0.005 }); }
+        initStars(100);
+        function drawStars() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            for(var i=0;i<stars.length;i++) { var s=stars[i]; s.a+=Math.sin(Date.now()*s.s)*0.003; s.a=Math.max(0.1,Math.min(1,s.a)); ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,'+s.a+')'; ctx.fill(); }
+            requestAnimationFrame(drawStars);
+        }
+        drawStars();
+
+        // 2. 暖心情话库
+        var shortMessages = [
+            { t: '我想你了 💛', c: 'pink' },
+            { t: '你是最棒的 🌟', c: 'gold' },
+            { t: '加油！你可以的 💪', c: 'warm' },
+            { t: '要天天开心呀 😊', c: 'teal' },
+            { t: '我相信你 ✨', c: 'purple' },
+            { t: '不用太在意那些烦心事 🌸', c: 'pink' },
+            { t: '你值得被爱 💕', c: 'warm' },
+            { t: '今天也超棒哒 🎉', c: 'gold' },
+            { t: '好好吃饭 好好睡觉 🌙', c: 'blue' },
+            { t: '你笑起来很好看 ☀️', c: 'teal' },
+            { t: '一切都会好起来的 🌈', c: 'purple' },
+            { t: '别太累，歇一歇 🫂', c: 'warm' },
+            { t: '你是独一无二的 🦋', c: 'pink' },
+            { t: '已经很厉害了 👑', c: 'gold' },
+            { t: '我永远支持你 💪', c: 'teal' },
+            { t: '世界因你而美好 🌍', c: 'blue' },
+            { t: '记得多喝水哟 🫖', c: 'purple' },
+            { t: '你好温柔呀 🌷', c: 'pink' },
+            { t: '向前看，光就在前方 🔆', c: 'gold' },
+            { t: '累了就休息一下 😴', c: 'warm' },
+            { t: '你的存在很有意义 💫', c: 'teal' },
+            { t: '每天都是新的开始 🌅', c: 'blue' },
+            { t: '别怕，有我在 🤝', c: 'purple' },
+            { t: '你比想象中更坚强 🛡️', c: 'warm' },
+            { t: '此刻星光为你闪耀 🌟', c: 'gold' },
+            { t: '慢慢来，不着急 🚶', c: 'pink' },
+            { t: '对自己好一点 🍵', c: 'teal' },
+            { t: '你真的很可爱 🐣', c: 'blue' },
+            { t: '今天也辛苦了 🫶', c: 'purple' },
+            { t: '保持微笑 明天更好 😄', c: 'warm' },
+            { t: '允许自己偶尔软弱 🌊', c: 'pink' },
+            { t: '你的努力我都看见了 👀', c: 'gold' },
+            { t: '小小的步伐也很棒 🐾', c: 'teal' },
+            { t: '幸福会来的 🌻', c: 'blue' },
+            { t: '你有自己的节奏 🎵', c: 'purple' },
+            { t: '愿你今夜好梦 🌛', c: 'warm' },
+            { t: '抱抱你 🤗', c: 'pink' },
+            { t: '快乐就在你心里 🧡', c: 'gold' },
+            { t: '你是被爱包围的 🎀', c: 'teal' },
+            { t: '大胆去做吧 🚀', c: 'blue' },
+            { t: '你永远值得 💖', c: 'warm' },
+            { t: '放宽心，没事的 🕊️', c: 'teal' },
+            { t: '你已经做得很好啦 🏅', c: 'gold' },
+            { t: '深呼吸，放轻松 🌿', c: 'purple' },
+            { t: '愿你被世界温柔以待 🌍', c: 'pink' },
+        ];
+
+        // 3. 弹窗
+        var bubbleId = 0;
+        var floatClasses = ['float-a','float-b','float-c'];
+        function createBubble(msg, delay) {
+            delay = delay || 0;
+            var container = document.getElementById('bubbleContainer');
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble ' + msg.c + ' ' + floatClasses[Math.floor(Math.random()*floatClasses.length)];
+            bubble.textContent = msg.t;
+            var w = window.innerWidth, h = window.innerHeight;
+            var bw = Math.min(msg.t.length * 13 + 50, w * 0.7);
+            var left = Math.random() * (w - bw - 30) + 15;
+            var top = Math.random() * (h - 44 - 70) + 35;
+            bubble.style.left = left + 'px';
+            bubble.style.top = top + 'px';
+            bubble.style.animationDelay = delay + 's';
+            bubble.addEventListener('click', function(e) {
+                e.stopPropagation();
+                this.classList.add('pop');
+                var self = this;
+                setTimeout(function() { if(self.parentNode) self.parentNode.removeChild(self); }, 350);
+            });
+            container.appendChild(bubble);
+        }
+        function addMoreBubbles(count) {
+            count = count || 6;
+            var shuffled = shortMessages.slice().sort(function(){return Math.random()-0.5;});
+            for(var i=0;i<Math.min(count,shuffled.length);i++) {
+                (function(idx){
+                    setTimeout(function(){ createBubble(shuffled[idx], 0); }, idx*100);
+                })(i);
+            }
+        }
+        function clearBubbles() {
+            var bubbles = document.querySelectorAll('.bubble');
+            for(var i=0;i<bubbles.length;i++) {
+                (function(b,idx){
+                    setTimeout(function(){
+                        b.classList.add('pop');
+                        setTimeout(function(){ if(b.parentNode) b.parentNode.removeChild(b); }, 350);
+                    }, idx*40);
+                })(bubbles[i], i);
+            }
+        }
+
+        // 4. 音乐 — 只在打开信封后触发
+        var musicStarted = false;
+
+        function startMusic() {
+            if (musicStarted) return;
+            musicStarted = true;
+
+            // 创建隐藏的网易云音乐 iframe（最可靠的播放方式）
+            var iframe = document.createElement('iframe');
+            iframe.src = 'https://music.163.com/outchain/player?type=2&id=1413579927&auto=1&height=66';
+            iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0.01;border:none;';
+            iframe.allow = 'autoplay';
+            document.body.appendChild(iframe);
+
+            // 同时尝试直链方式（支持跳跃到高潮1:37）
+            try {
+                var audio = new Audio('https://music.163.com/song/media/outer/url?id=1413579927.mp3');
+                audio.preload = 'auto';
+                (function(a){
+                    a.addEventListener('loadedmetadata', function(){
+                        if (a.duration && a.duration > 100) {
+                            try { a.currentTime = 97; } catch(e){}
+                        }
+                    });
+                    a.play().then(function(){
+                        // 直链播放成功，跳到高潮
+                        if (a.duration && a.duration > 100) {
+                            try { a.currentTime = 97; } catch(e){}
+                        }
+                    }).catch(function(){});
+                })(audio);
+            } catch(e) {}
+        }
+
+        // 5. 打开信
+        var letterOpened = false;
+        function openLetter() {
+            if (letterOpened) return;
+            letterOpened = true;
+            document.getElementById('letterScene').classList.add('hidden');
+            document.getElementById('controls').classList.add('show');
+
+            // 点击信封后才启动音乐！
+            startMusic();
+
+            // 弹出弹窗
+            var all = shortMessages.slice().sort(function(){return Math.random()-0.5;});
+            for(var i=0;i<10;i++) {
+                (function(idx){ setTimeout(function(){ createBubble(all[idx], 0); }, idx*130+200); })(i);
+            }
+            setTimeout(function(){
+                for(var i=10;i<20;i++) {
+                    (function(idx){ setTimeout(function(){ createBubble(all[idx], 0); }, (idx-10)*110); })(i);
+                }
+            }, 900);
+            setTimeout(function(){
+                for(var i=20;i<30;i++) {
+                    (function(idx){ setTimeout(function(){ createBubble(all[idx], 0); }, (idx-20)*90); })(i);
+                }
+            }, 2000);
+            setTimeout(function(){
+                for(var i=30;i<all.length;i++) {
+                    (function(idx){ setTimeout(function(){ createBubble(all[idx], 0); }, (idx-30)*70); })(i);
+                }
+            }, 3200);
+            setTimeout(function(){ addMoreBubbles(8); }, 4500);
+            setTimeout(function(){ addMoreBubbles(6); }, 6000);
+            setTimeout(function(){ createPetals(); }, 500);
+        }
+
+        // 6. 花瓣
+        function createPetals() {
+            var emojis = ['🌸','🌷','🌺','💛','✨','🦋','🌼'];
+            for(var i=0;i<25;i++) {
+                var p = document.createElement('div');
+                p.className = 'petal';
+                p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+                p.style.left = Math.random()*100+'%';
+                p.style.fontSize = (12+Math.random()*14)+'px';
+                p.style.animationDuration = (8+Math.random()*14)+'s';
+                p.style.animationDelay = Math.random()*12+'s';
+                document.body.appendChild(p);
+            }
+        }
+    </script>
+</body>
+</html>
